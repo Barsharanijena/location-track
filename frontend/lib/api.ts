@@ -47,10 +47,6 @@ export async function fetchAutocompleteSuggestions(
   );
 }
 
-/**
- * Fetch road-following waypoints between two coordinates using OSRM.
- * Falls back to straight-line interpolation if the API is unavailable.
- */
 export async function buildRoute(from: Coordinates, to: Coordinates): Promise<Coordinates[]> {
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
@@ -58,12 +54,10 @@ export async function buildRoute(from: Coordinates, to: Coordinates): Promise<Co
     if (!res.ok) throw new Error("OSRM error");
     const data = await res.json() as { routes: { geometry: { coordinates: [number, number][] } }[] };
     const coords = data.routes[0].geometry.coordinates;
-    // Thin to max 40 waypoints so simulation doesn't become sluggish
     const step = Math.max(1, Math.floor(coords.length / 40));
     const thinned = coords.filter((_, i) => i % step === 0 || i === coords.length - 1);
     return thinned.map(([lng, lat]) => ({ lat, lng }));
   } catch {
-    // Fallback: 10 interpolated straight-line points
     return Array.from({ length: 10 }, (_, i) => ({
       lat: from.lat + (to.lat - from.lat) * (i / 9),
       lng: from.lng + (to.lng - from.lng) * (i / 9),

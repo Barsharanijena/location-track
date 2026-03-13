@@ -123,7 +123,6 @@ export function SimulationControls({
     <section aria-label="Simulation controls" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
       <h2 className="font-semibold text-slate-800">Simulation Controls</h2>
 
-      {/* Connection row */}
       <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
         <span className={`h-2.5 w-2.5 rounded-full ${statusColor} shadow-sm`} aria-hidden="true" />
         <span className="text-sm text-slate-600 capitalize flex-1">{trackingState.status}</span>
@@ -135,7 +134,6 @@ export function SimulationControls({
         )}
       </div>
 
-      {/* Agent name */}
       <div className="space-y-1.5">
         <label htmlFor="agent-name" className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">Agent Name</label>
         <input
@@ -145,7 +143,6 @@ export function SimulationControls({
         />
       </div>
 
-      {/* Route selector */}
       <div className="space-y-1.5">
         <label htmlFor="route-select" className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">Route</label>
         <select
@@ -158,7 +155,6 @@ export function SimulationControls({
         </select>
       </div>
 
-      {/* Custom route builder */}
       {isCustom && (
         <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50 p-3">
           <AddressInput id="from-addr" label="From" value={fromAddress} onChange={setFromAddress} onSelect={setFromAddress} />
@@ -179,7 +175,6 @@ export function SimulationControls({
         </div>
       )}
 
-      {/* Start / Stop */}
       <div className="flex gap-2.5">
         <button onClick={handleStart} disabled={!canStart}
           className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-colors shadow-sm">
