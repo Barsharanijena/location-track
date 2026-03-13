@@ -1,27 +1,31 @@
 /**
  * Semantic Cache Service
  *
- * Two-layer cache strategy:
+ * Three-layer cache strategy:
  *  1. Exact-string match  → O(1) lookup on normalized query
- *  2. Proximity match     → geohash-prefix search (~500 m radius)
- *
- * Optionally delegates to Ollama for fuzzy semantic matching when
- * neither layer hits (OLLAMA_ENABLED=true in env).
+ *  2. Proximity match     → geohash-prefix search (~610 m radius)
+ *                           + Jaccard token-overlap heuristic
+ *  3. Semantic match      → Ollama embedding cosine-similarity
+ *                           (only when OLLAMA_ENABLED=true)
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ngeohash = require("ngeohash") as typeof import("ngeohash");
 import { CacheEntry, Coordinates, ParsedAddress } from "../types/index";
+import { cosineSimilarity, getEmbedding } from "./ollamaService";
 
 // Geohash precision 7 ≈ ±76 m  →  prefix-6 ≈ ±610 m  (close-neighbourhood)
 const GEOHASH_PRECISION = 7;
 const PROXIMITY_PREFIX_LENGTH = 6;
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_CACHE_SIZE = 500;
+const SEMANTIC_SIMILARITY_THRESHOLD = 0.92; // cosine sim ≥ 92 % is a match
 
 export class SemanticCacheService {
   private readonly exactCache = new Map<string, CacheEntry>();
   private readonly geohashIndex = new Map<string, string[]>(); // prefix → [queryKeys]
+
+  // ─── Private helpers ──────────────────────────────────────────────────────
 
   private normalizeQuery(query: string): string {
     return query.trim().toLowerCase().replace(/\s+/g, " ");
@@ -63,6 +67,18 @@ export class SemanticCacheService {
     if (oldest) this.removeEntry(oldest.key);
   }
 
+  /** Rough token-overlap heuristic (Jaccard ≥ 0.4). */
+  private queryOverlaps(a: string, b: string): boolean {
+    const tokenize = (s: string) => new Set(s.split(" ").filter((t) => t.length > 2));
+    const setA = tokenize(a);
+    const setB = tokenize(b);
+    const intersection = [...setA].filter((t) => setB.has(t)).length;
+    const union = new Set([...setA, ...setB]).size;
+    return union > 0 && intersection / union >= 0.4;
+  }
+
+  // ─── Public API ───────────────────────────────────────────────────────────
+
   /** Store geocoded results in both cache layers. */
   set(query: string, results: ParsedAddress[]): void {
     if (results.length === 0) return;
@@ -90,11 +106,14 @@ export class SemanticCacheService {
     if (!siblings.includes(key)) {
       this.geohashIndex.set(prefix, [...siblings, key]);
     }
+
+    // Fire-and-forget: enrich cache entry with Ollama embedding if enabled
+    this.storeEmbeddingAsync(key).catch(() => undefined);
   }
 
   /**
-   * Look up cache.
-   * Returns { entry, layer } where layer is "exact" | "proximity" | null.
+   * Synchronous lookup (layers 1 + 2).
+   * Fast path — does not call Ollama.
    */
   get(query: string): { entry: CacheEntry | null; layer: "exact" | "proximity" | null } {
     this.evictExpiredEntries();
@@ -107,22 +126,52 @@ export class SemanticCacheService {
       return { entry: exactHit, layer: "exact" };
     }
 
-    // Layer 2 – proximity via geohash prefix
-    // We cannot compute a geohash without coordinates, so we search all
-    // geohash-prefix buckets and return the most-recently-used entry.
-    // (In practice the caller only reaches here when a previous nearby search
-    //  has already populated the cache.)
+    // Layer 2 – Jaccard proximity within geohash buckets
     for (const [, keys] of this.geohashIndex.entries()) {
       for (const k of keys) {
         const entry = this.exactCache.get(k);
         if (!entry) continue;
-        // Re-check TTL
         if (Date.now() - entry.createdAt > CACHE_TTL_MS) continue;
-        // Proximity hit is only useful if the query words overlap meaningfully.
         if (this.queryOverlaps(key, k)) {
           entry.hitCount += 1;
           return { entry, layer: "proximity" };
         }
+      }
+    }
+
+    return { entry: null, layer: null };
+  }
+
+  /**
+   * Async lookup (layers 1 + 2 + optional Ollama embedding layer 3).
+   * Use this in route handlers for the richest cache hit rate.
+   */
+  async getAsync(
+    query: string
+  ): Promise<{ entry: CacheEntry | null; layer: "exact" | "proximity" | "semantic" | null }> {
+    // Fast path first
+    const syncResult = this.get(query);
+    if (syncResult.entry) return syncResult;
+
+    // Layer 3 – Ollama semantic similarity
+    const queryEmbedding = await getEmbedding(query);
+    if (queryEmbedding) {
+      let bestEntry: CacheEntry | null = null;
+      let bestSim = 0;
+
+      for (const entry of this.exactCache.values()) {
+        if (!entry.embedding || Date.now() - entry.createdAt > CACHE_TTL_MS) continue;
+        const sim = cosineSimilarity(queryEmbedding, entry.embedding);
+        if (sim >= SEMANTIC_SIMILARITY_THRESHOLD && sim > bestSim) {
+          bestSim = sim;
+          bestEntry = entry;
+        }
+      }
+
+      if (bestEntry) {
+        bestEntry.hitCount += 1;
+        console.log(`[cache] semantic hit  sim=${bestSim.toFixed(3)}  query="${query}"`);
+        return { entry: bestEntry, layer: "semantic" };
       }
     }
 
@@ -153,14 +202,14 @@ export class SemanticCacheService {
     return this.exactCache.size;
   }
 
-  /** Rough token-overlap heuristic (Jaccard ≥ 0.4). */
-  private queryOverlaps(a: string, b: string): boolean {
-    const tokenize = (s: string) => new Set(s.split(" ").filter((t) => t.length > 2));
-    const setA = tokenize(a);
-    const setB = tokenize(b);
-    const intersection = [...setA].filter((t) => setB.has(t)).length;
-    const union = new Set([...setA, ...setB]).size;
-    return union > 0 && intersection / union >= 0.4;
+  // ─── Private async helpers ────────────────────────────────────────────────
+
+  /** Fetch embedding from Ollama and store it in the existing cache entry. */
+  private async storeEmbeddingAsync(normalizedKey: string): Promise<void> {
+    const embedding = await getEmbedding(normalizedKey);
+    if (!embedding) return;
+    const entry = this.exactCache.get(normalizedKey);
+    if (entry) entry.embedding = embedding;
   }
 }
 

@@ -18,8 +18,8 @@ router.post("/", async (req: Request<object, GeocodeResponse, GeocodeRequest>, r
     return;
   }
 
-  // Check semantic cache first
-  const { entry, layer } = semanticCache.get(query);
+  // Check semantic cache (layers 1 + 2 sync, layer 3 Ollama async)
+  const { entry, layer } = await semanticCache.getAsync(query);
   if (entry) {
     const response: GeocodeResponse = {
       results: entry.results,
@@ -102,7 +102,11 @@ router.get("/autocomplete", async (req: Request, res: Response) => {
  * GET /api/geocode/cache/stats
  */
 router.get("/cache/stats", (_req: Request, res: Response) => {
-  res.json({ size: semanticCache.size });
+  res.json({
+    size: semanticCache.size,
+    ollamaEnabled: process.env["OLLAMA_ENABLED"] === "true",
+    ollamaModel: process.env["OLLAMA_MODEL"] ?? "nomic-embed-text",
+  });
 });
 
 export default router;

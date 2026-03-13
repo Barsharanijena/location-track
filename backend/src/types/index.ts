@@ -64,6 +64,8 @@ export interface CacheEntry {
   geohash: string;
   createdAt: number;
   hitCount: number;
+  /** Ollama nomic-embed-text vector (set asynchronously after first cache write) */
+  embedding?: number[];
 }
 
 // ─── Delivery Tracking ───────────────────────────────────────────────────────

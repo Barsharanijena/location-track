@@ -95,7 +95,7 @@ export function AddressSearchInput({
         <ul
           id="suggestions-list"
           role="listbox"
-          className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200
+          className="absolute z-[1000] mt-1 w-full overflow-hidden rounded-lg border border-gray-200
                      bg-white shadow-lg"
         >
           {suggestions.map((s, i) => (
