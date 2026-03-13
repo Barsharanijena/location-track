@@ -23,9 +23,16 @@ function mapNominatimToAddress(raw: NominatimResult): ParsedAddress {
   };
 }
 
+function buildQuery(query: string): string {
+  const q = query.trim();
+  const lower = q.toLowerCase();
+  if (lower.includes("maharashtra") || lower.includes("india")) return q;
+  return `${q}, Maharashtra, India`;
+}
+
 export async function searchAddress(query: string): Promise<ParsedAddress[]> {
   const params = new URLSearchParams({
-    q: `${query}, Maharashtra, India`,
+    q: buildQuery(query),
     format: "json",
     addressdetails: "1",
     limit: "5",
@@ -65,7 +72,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ParsedAd
 
 export async function autocomplete(query: string): Promise<NominatimResult[]> {
   const params = new URLSearchParams({
-    q: `${query}, Maharashtra, India`,
+    q: buildQuery(query),
     format: "json",
     addressdetails: "0",
     limit: "8",
