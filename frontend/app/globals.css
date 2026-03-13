@@ -2,7 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ensure Leaflet tiles render correctly inside flex/grid containers */
 .leaflet-container {
   z-index: 0;
+}
+
+body {
+  background: #f8fafc;
 }

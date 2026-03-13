@@ -17,7 +17,7 @@ const AddressMap = dynamic(
 
 function MapPlaceholder() {
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-500">
+    <div className="flex h-full w-full items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-400">
       Loading map…
     </div>
   );
@@ -33,7 +33,6 @@ export default function AddressLookupPage() {
 
   useEffect(() => {
     if (geoState.status !== "success") return;
-
     setIsReverseLoading(true);
     reverseGeocodeCoords(geoState.coordinates)
       .then(({ result, fromCache }) => {
@@ -69,58 +68,59 @@ export default function AddressLookupPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Address Lookup</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 px-6 py-8 text-white shadow-lg">
+        <h1 className="text-3xl font-bold tracking-tight">Address Lookup</h1>
+        <p className="mt-1.5 text-brand-100 text-sm">
           Search any address in Maharashtra or use your current location.
         </p>
       </div>
 
       {geoState.status === "loading" && (
-        <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+        <div className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
           <Spinner size="sm" />
           Detecting your location…
         </div>
       )}
 
       {geoState.status === "denied" && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-          Location access was denied. Use the search box below to find your address.
-          <button onClick={retryGeo} className="ml-3 underline hover:no-underline">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Location access was denied.
+          <button onClick={retryGeo} className="ml-2 font-medium underline hover:no-underline">
             Try again
           </button>
         </div>
       )}
 
       {geoState.status === "error" && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {geoState.message}
         </div>
       )}
 
-      <AddressSearchInput
-        query={searchState.query}
-        suggestions={searchState.suggestions}
-        isSearching={searchState.isSearching}
-        isFetching={searchState.isFetching || isReverseLoading}
-        error={searchState.error}
-        onChange={setQuery}
-        onSelect={selectSuggestion}
-        onSubmit={geocodeQuery}
-      />
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <AddressSearchInput
+          query={searchState.query}
+          suggestions={searchState.suggestions}
+          isSearching={searchState.isSearching}
+          isFetching={searchState.isFetching || isReverseLoading}
+          error={searchState.error}
+          onChange={setQuery}
+          onSelect={selectSuggestion}
+          onSubmit={geocodeQuery}
+        />
+      </div>
 
       {displayedAddress && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="h-80 overflow-hidden rounded-xl border border-gray-200 shadow-sm lg:h-[420px]">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="h-80 overflow-hidden rounded-2xl border border-slate-200 shadow-sm lg:h-[440px]">
             <AddressMap address={displayedAddress} onMapClick={handleMapClick} />
           </div>
-
           <AddressFields address={displayedAddress} fromCache={addressFromCache} />
         </div>
       )}
 
       {isReverseLoading && !displayedAddress && (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-16">
           <Spinner size="lg" label="Fetching address details…" />
         </div>
       )}

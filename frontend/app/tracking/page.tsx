@@ -15,7 +15,7 @@ const TrackingMap = dynamic(
 
 function MapPlaceholder() {
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-500">
+    <div className="flex h-full w-full items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-400">
       Loading map…
     </div>
   );
@@ -47,9 +47,9 @@ export default function TrackingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Live Delivery Tracking</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 px-6 py-8 text-white shadow-lg">
+        <h1 className="text-3xl font-bold tracking-tight">Live Delivery Tracking</h1>
+        <p className="mt-1.5 text-emerald-100 text-sm">
           Simulate a delivery agent moving across Maharashtra in real time.
         </p>
       </div>
@@ -57,14 +57,15 @@ export default function TrackingPage() {
       {isArrived && (
         <div
           role="status"
-          className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800"
+          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
         >
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
           Agent has arrived at the destination.
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="h-[480px] overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+        <div className="h-[500px] overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
           <TrackingMap
             agentLocation={agentLocation}
             locationHistory={locationHistory}
