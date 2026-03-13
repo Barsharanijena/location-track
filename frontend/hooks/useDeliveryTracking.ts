@@ -26,7 +26,7 @@ export function useDeliveryTracking(agentId: string) {
     setTrackingState({ status: "connecting" });
 
     const socket = io(`${BACKEND_URL}/tracking`, {
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
     });
 
     socket.on("connect", () => {
